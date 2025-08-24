@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>FindYourAITool — fast AI tool browser</title>
+  <meta name="description" content="FindYourAITool — browse and search AI tools quickly with beautiful, compact cards.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24'%3E%3Cpath fill='%23fff' d='M12 2l3.09 6.26L22 9.27l-5 4.9L18.18 22L12 18.56L5.82 22L7 14.17l-5-4.9l6.91-1.01z'/%3E%3C/svg%3E">
+  <meta name="color-scheme" content="light dark">
+
+  <style>
+    :root {
+      --bg: #0b0d11;
+      --panel: rgba(255,255,255,0.05);
+      --panel-2: rgba(255,255,255,0.08);
+      --text: #e9edf3;
+      --muted: #a7b0bd;
+      --accent: #7c9cff;
+      --accent-2: #8cf6ff;
+      --ok: #2ecc71;
+      --warn: #ffb020;
+      --bad: #ff6577;
+      --chip: rgba(255,255,255,0.08);
+      --chip-border: rgba(255,255,255,0.12);
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --ring: 0 0 0 1.5px rgba(140, 246, 255, .35);
+      --card-min-w: 260px;
+      --max-w: 1400px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f7f8fb;
+        --panel: rgba(0,0,0,0.03);
+        --panel-2: rgba(0,0,0,0.05);
+        --text: #0c1322;
+        --muted: #495469;
+        --chip: rgba(0,0,0,0.06);
+        --chip-border: rgba(0,0,0,0.1);
+        --shadow: 0 12px 28px rgba(0,0,0,.08);
+        --ring: 0 0 0 1.5px rgba(124,156,255,.35);
+      }
+    }
+    :root[data-theme="light"] {
+      --bg: #f7f8fb;
+      --panel: rgba(0,0,0,0.03);
+      --panel-2: rgba(0,0,0,0.05);
+      --text: #0c1322;
+      --muted: #495469;
+      --chip: rgba(0,0,0,0.06);
+      --chip-border: rgba(0,0,0,0.1);
+      --shadow: 0 12px 28px rgba(0,0,0,.08);
+      --ring: 0 0 0 1.5px rgba(124,156,255,.35);
+    }
+    * { box-sizing: border-box }
+    html, body { height: 100% }
+    body {
+      margin: 0;
+      font: 14px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(124,156,255,.18), transparent 60%),
+        radial-gradient(900px 500px at -10% 10%, rgba(140,246,255,.16), transparent 50%),
+        var(--bg);
+      overflow-y: overlay;
+    }
+    a { color: inherit; text-decoration: none }
+    header {
+      position: sticky; top: 0; z-index: 10;
+      backdrop-filter: saturate(160%) blur(14px);
+      background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,0));
+      border-bottom: 1px solid var(--panel-2);
+    }
+    .bar { max-width: var(--max-w); margin: 0 auto; padding: 14px 18px; display: grid; gap: 10px; align-items: center; grid-template-columns: 1fr auto auto; }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; letter-spacing: .2px; }
+    .logo { width: 26px; height: 26px; border-radius: 8px; background: conic-gradient(from 210deg, var(--accent), var(--accent-2), var(--accent)); box-shadow: inset 0 0 20px rgba(255,255,255,.25), var(--shadow); }
+    .search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--chip-border); background: var(--panel); padding: 10px 12px; border-radius: 12px; min-width: 320px; box-shadow: var(--ring); }
+    .search input { width: 100%; border: 0; outline: none; background: transparent; color: var(--text); font-size: 14px; }
+    .actions { display: flex; align-items: center; gap: 8px; }
+    .btn, select { border: 1px solid var(--chip-border); background: var(--panel); color: var(--text); padding: 10px 12px; border-radius: 12px; cursor: pointer; }
+    .btn:hover { background: var(--panel-2) }
+    .primary { background: color-mix(in oklab, var(--accent), white 12%); border-color: color-mix(in oklab, var(--accent), white 40%); }
+    .primary:hover { background: color-mix(in oklab, var(--accent), white 18%); }
+    .toggle { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 30px }
+    .count { font-variant-numeric: tabular-nums; color: var(--muted) }
+
+    .filters { max-width: var(--max-w); margin: 12px auto 0; padding: 0 18px 8px; display: grid; gap: 8px; grid-template-columns: 1fr auto auto auto auto auto; align-items: center; }
+    .chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+    .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--chip-border); background: var(--chip); padding: 6px 10px; border-radius: 999px; color: var(--text); cursor: pointer; user-select: none; }
+    .chip[data-active="true"] { outline: 2px solid var(--accent); background: color-mix(in oklab, var(--chip), var(--accent) 12%); }
+    .badge { font-size: 12px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--panel-2) }
+
+    main { max-width: var(--max-w); margin: 12px auto 90px; padding: 0 18px }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(var(--card-min-w), 1fr)); }
+
+    .card {
+      position: relative; border: 1px solid var(--chip-border); background: color-mix(in oklab, var(--panel), black 6%);
+      border-radius: var(--radius); padding: 12px; box-shadow: var(--shadow);
+      display: grid; gap: 10px; content-visibility: auto; contain: content;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease; min-height: 132px;
+    }
+    .card:hover { transform: translateY(-2px); border-color: color-mix(in oklab, var(--chip-border), var(--accent) 35%); background: color-mix(in oklab, var(--panel), var(--accent) 7%); }
+    .card-top { display: flex; justify-content: space-between; align-items: start; gap: 10px }
+    .title { font-weight: 700; line-height: 1.15; letter-spacing: .2px }
+    .vendor { color: var(--muted); font-size: 12px }
+    .desc { color: var(--muted); line-height: 1.3 }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+    .badges { display: flex; gap: 6px; flex-wrap: wrap }
+    .pill { font-size: 11px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--chip-border); background: var(--panel-2) }
+    .status[data-s="beta"] { background: #5533ff20; border-color: #8f83ff70; color: #b5b0ff }
+    .status[data-s="sunset"] { background: #ff335520; border-color: #ff839b70; color: #ffc4cd }
+    .nsfw { background: #ff3b3b1f; border-color: #ff9898; color: #ffbdbd }
+
+    .card .links { display: flex; gap: 8px; }
+    .ghost { background: transparent; border: 1px dashed var(--chip-border); color: var(--text); border-radius: 10px; padding: 6px 8px; cursor: pointer }
+    .ghost:hover { border-style: solid; background: var(--panel-2) }
+
+    .footerNote { margin: 30px auto 0; color: var(--muted); text-align: center }
+
+    dialog {
+      color: var(--text); border: 1px solid var(--chip-border); background: color-mix(in oklab, var(--panel), black 7%);
+      border-radius: 14px; padding: 0; width: min(760px, 96vw); box-shadow: var(--shadow);
+    }
+    dialog::backdrop { backdrop-filter: blur(10px) saturate(130%); background: rgba(0,0,0,.4) }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px; border-bottom: 1px solid var(--chip-border) }
+    .modal-body { padding: 18px; display: grid; gap: 16px }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; padding: 0 16px 16px; }
+    .metaGrid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)) }
+    .kv { display: grid; gap: 6px }
+    .kv b { font-size: 12px; color: var(--muted) }
+    .muted { color: var(--muted) }
+    .hidden { display: none !important }
+
+    .warnBanner { max-width: var(--max-w); margin: 12px auto 0; padding: 10px 12px; border-radius: 12px; background: #ff696120; border: 1px solid #ff9f9f60; color: #ffc9c9 }
+
+    @media (max-width: 920px) {
+      .filters { grid-template-columns: 1fr 1fr 1fr; row-gap: 10px }
+      .bar { grid-template-columns: 1fr; gap: 8px }
+      .search { min-width: unset; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="brand" aria-label="FindYourAITool home">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div style="font-size:16px">FindYourAITool</div>
+          <div class="count" id="count">Loading tools…</div>
+        </div>
+      </div>
+      <label class="search" aria-label="Search tools">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15a7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Search tools, tags, vendors…  Try: tag:rag api:1 pricing:free" autocomplete="off" spellcheck="false">
+      </label>
+      <div class="actions">
+        <button id="toggleTheme" class="btn" title="Toggle theme">🌓</button>
+      </div>
+    </div>
+    <div id="nsfwBanner" class="warnBanner hidden">
+      NSFW/18+ tools are hidden by default. Toggle “NSFW” filter to show them. Please ensure legal compliance and age gating.
+    </div>
+    <div class="filters">
+      <div class="chips" id="categoryRow" aria-label="Filter by category"></div>
+      <select id="pricing">
+        <option value="">Pricing: Any</option>
+        <option>free</option>
+        <option>freemium</option>
+        <option>paid</option>
+        <option>opensource</option>
+        <option>enterprise</option>
+      </select>
+      <select id="sort">
+        <option value="relevance">Sort: Relevance</option>
+        <option value="name-asc">Name A→Z</option>
+        <option value="newest">Newest</option>
+        <option value="oldest">Oldest</option>
+      </select>
+      <label class="chip"><input id="f-api" type="checkbox"> API</label>
+      <label class="chip"><input id="f-oss" type="checkbox"> Open source</label>
+      <label class="chip"><input id="f-self" type="checkbox"> Self-hosted</label>
+      <label class="chip" id="f-nsfw-chip" title="Show NSFW/18+ tools"><input id="f-nsfw" type="checkbox"> NSFW</label>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid" id="grid" aria-live="polite"></section>
+    <p class="footerNote">
+      Built for speed. No frameworks, just HTML+CSS+JS. Data powered by your JSON/NDJSON.
+    </p>
+  </main>
+
+  <!-- About modal -->
+  <dialog id="about">
+    <div class="modal-head">
+      <div>
+        <div class="title" id="aboutTitle">Tool name</div>
+        <div class="vendor" id="aboutVendor"></div>
+      </div>
+      <div class="links">
+        <a id="aboutOpen" class="btn" target="_blank" rel="noopener">Open ↗</a>
+        <button class="btn" id="aboutClose">Close</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <p id="aboutDesc" class="muted"></p>
+      <div class="row" id="aboutCats"></div>
+      <div class="row" id="aboutTags"></div>
+      <div class="metaGrid">
+        <div class="kv"><b>Pricing</b><span id="aboutPricing"></span></div>
+        <div class="kv"><b>API</b><span id="aboutApi"></span></div>
+        <div class="kv"><b>Open source</b><span id="aboutOSS"></span></div>
+        <div class="kv"><b>Self-hosted</b><span id="aboutSelf"></span></div>
+        <div class="kv"><b>NSFW allowed</b><span id="aboutNSFW"></span></div>
+        <div class="kv"><b>Status</b><span id="aboutStatus"></span></div>
+        <div class="kv"><b>Release year</b><span id="aboutYear"></span></div>
+        <div class="kv"><b>ID</b><span id="aboutId" class="muted"></span></div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- One-time NSFW confirm -->
+  <dialog id="nsfwConfirm">
+    <div class="modal-head">
+      <div class="title">NSFW (18+) content</div>
+      <button class="btn" id="nsfwClose">Close</button>
+    </div>
+    <div class="modal-body">
+      <p class="muted">
+        This will display tools that permit adult/18+ content. Please confirm you are at least 18 and comply with local laws and the tools’ terms of service.
+      </p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="nsfwCancel">Cancel</button>
+      <button class="btn primary" id="nsfwProceed">I am 18+ — Show NSFW</button>
+    </div>
+  </dialog>
+
+  <script type="module">
+    // CONFIG: where your data lives
+    const DATA_SOURCES = [
+      './data/tools.ndjson', // preferred (stream-friendly)
+      './data/tools.json'    // fallback (JSON array)
+    ];
+    const CACHE_VER = 'v2';
+    const CACHE_KEY = `fyat:${CACHE_VER}:data`;
+    const CACHE_META_KEY = `fyat:${CACHE_VER}:meta`;
+    const STATE_KEY = 'fyat:ui:state';
+    const NSFW_ACK_KEY = 'fyat:nsfw:ack:v1';
+
+    const state = {
+      q: '',
+      category: '',
+      pricing: '',
+      api: false,
+      oss: false,
+      self: false,
+      nsfw: false, // hidden by default
+      sort: 'relevance',
+    };
+
+    const el = {
+      grid: document.getElementById('grid'),
+      count: document.getElementById('count'),
+      q: document.getElementById('q'),
+      pricing: document.getElementById('pricing'),
+      sort: document.getElementById('sort'),
+      fApi: document.getElementById('f-api'),
+      fOss: document.getElementById('f-oss'),
+      fSelf: document.getElementById('f-self'),
+      fNSFW: document.getElementById('f-nsfw'),
+      fNSFWChip: document.getElementById('f-nsfw-chip'),
+      categoryRow: document.getElementById('categoryRow'),
+      about: document.getElementById('about'),
+      aboutClose: document.getElementById('aboutClose'),
+      aboutTitle: document.getElementById('aboutTitle'),
+      aboutVendor: document.getElementById('aboutVendor'),
+      aboutDesc: document.getElementById('aboutDesc'),
+      aboutCats: document.getElementById('aboutCats'),
+      aboutTags: document.getElementById('aboutTags'),
+      aboutPricing: document.getElementById('aboutPricing'),
+      aboutApi: document.getElementById('aboutApi'),
+      aboutOSS: document.getElementById('aboutOSS'),
+      aboutSelf: document.getElementById('aboutSelf'),
+      aboutNSFW: document.getElementById('aboutNSFW'),
+      aboutStatus: document.getElementById('aboutStatus'),
+      aboutYear: document.getElementById('aboutYear'),
+      aboutId: document.getElementById('aboutId'),
+      aboutOpen: document.getElementById('aboutOpen'),
+      nsfwBanner: document.getElementById('nsfwBanner'),
+      toggleTheme: document.getElementById('toggleTheme'),
+      nsfwConfirm: document.getElementById('nsfwConfirm'),
+      nsfwClose: document.getElementById('nsfwClose'),
+      nsfwCancel: document.getElementById('nsfwCancel'),
+      nsfwProceed: document.getElementById('nsfwProceed'),
+    };
+
+    // Theme toggle
+    el.toggleTheme.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'light' ? '' : 'light';
+      document.documentElement.dataset.theme = next;
+      localStorage.setItem('fyat:theme', next);
+      document.documentElement.style.colorScheme = next ? 'light' : 'dark';
+    });
+    const savedTheme = localStorage.getItem('fyat:theme');
+    if (savedTheme !== null) {
+      document.documentElement.dataset.theme = savedTheme;
+      document.documentElement.style.colorScheme = savedTheme ? 'light' : 'dark';
+    }
+
+    // Data holders
+    let TOOLS = [];
+    let INDEXED = []; // preprocessed text per tool
+    let CATEGORIES = [];
+    let CATEGORY_COUNTS = new Map();
+
+    // Init
+    init();
+
+    async function init() {
+      try {
+        const data = await loadDataWithCache();
+        TOOLS = data;
+        preprocess();
+        buildCategoryChips();
+        restoreFromQueryOrState();
+        render();
+        if (!state.nsfw) el.nsfwBanner.classList.remove('hidden');
+
+        // Keyboard: focus search
+        window.addEventListener('keydown', (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+            e.preventDefault(); el.q.focus();
+          }
+        });
+      } catch (e) {
+        console.error(e);
+        el.count.textContent = 'Failed to load data';
+      }
+    }
+
+    // LocalStorage-backed caching
+    async function loadDataWithCache() {
+      let cached = null, meta = null;
+      try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch {}
+      try { meta = JSON.parse(localStorage.getItem(CACHE_META_KEY) || 'null'); } catch {}
+
+      for (const url of DATA_SOURCES) {
+        try {
+          const headers = {};
+          if (meta?.url === url && meta?.etag) headers['If-None-Match'] = meta.etag;
+          const res = await fetch(url, { cache: 'no-store', headers });
+          if (res.status === 304 && cached?.url === url && cached?.raw) {
+            return parseData(cached.raw, url);
+          }
+          if (!res.ok) continue;
+          const text = await res.text();
+          // Save cache
+          const etag = res.headers.get('etag') || '';
+          const lastModified = res.headers.get('last-modified') || '';
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ url, raw: text, ts: Date.now() }));
+          localStorage.setItem(CACHE_META_KEY, JSON.stringify({ url, etag, lastModified }));
+          return parseData(text, url);
+        } catch (e) {
+          // network fail: fallback to cache if available
+          if (cached?.url === url && cached?.raw) {
+            console.warn('Using cached data due to fetch error:', e);
+            return parseData(cached.raw, url);
+          }
+        }
+      }
+      if (cached?.raw) return parseData(cached.raw, cached.url || DATA_SOURCES[0]);
+      throw new Error('No data source available');
+    }
+
+    function parseData(raw, url) {
+      if (url.endsWith('.json')) {
+        try { const arr = JSON.parse(raw); return Array.isArray(arr) ? arr : []; } catch { return []; }
+      }
+      // NDJSON
+      const out = [];
+      raw.split(/\r?\n/).forEach(line => {
+        if (!line.trim()) return;
+        try { out.push(JSON.parse(line)); } catch {}
+      });
+      return out;
+    }
+
+    // Preprocess index text
+    function preprocess() {
+      INDEXED = TOOLS.map((t, i) => {
+        const join = (a) => (a || []).join(' ');
+        const text = [
+          t.name, t.vendor, t.description,
+          join(t.tags), join(t.categories)
+        ].filter(Boolean).join(' ').toLowerCase();
+        const folded = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+        return { i, text: folded, fields: {
+          name: (t.name || '').toLowerCase(),
+          vendor: (t.vendor || '').toLowerCase(),
+          desc: (t.description || '').toLowerCase(),
+          tags: (t.tags || []).map(x => String(x).toLowerCase()),
+          cats: (t.categories || []).map(x => String(x).toLowerCase()),
+        }};
+      });
+
+      // Categories + counts
+      const set = new Set();
+      CATEGORY_COUNTS = new Map();
+      for (const t of TOOLS) {
+        (t.categories || []).forEach(c => {
+          set.add(c);
+          CATEGORY_COUNTS.set(c, (CATEGORY_COUNTS.get(c) || 0) + 1);
+        });
+      }
+      CATEGORIES = Array.from(set).sort();
+    }
+
+    // Build category chips
+    function buildCategoryChips() {
+      const frag = document.createDocumentFragment();
+      const all = chip('All', '', true);
+      frag.appendChild(all);
+      CATEGORIES.forEach(c => frag.appendChild(chip(`${c} (${CATEGORY_COUNTS.get(c) || 0})`, c)));
+      el.categoryRow.innerHTML = '';
+      el.categoryRow.appendChild(frag);
+
+      function chip(label, value, isAll=false) {
+        const d = document.createElement('button');
+        d.className = 'chip';
+        d.dataset.value = value;
+        d.dataset.active = (isAll && state.category === '') ? 'true' : 'false';
+        d.textContent = label;
+        d.addEventListener('click', () => {
+          state.category = value;
+          [...el.categoryRow.children].forEach(x => x.dataset.active = 'false');
+          d.dataset.active = 'true';
+          saveState(); updateQuery(); render();
+        });
+        return d;
+      }
+    }
+
+    // UI events
+    el.q.addEventListener('input', debounce(() => { state.q = el.q.value.trim(); saveState(); updateQuery(); render(); }, 70));
+    el.pricing.addEventListener('change', () => { state.pricing = el.pricing.value; saveState(); updateQuery(); render(); });
+    el.sort.addEventListener('change', () => { state.sort = el.sort.value; saveState(); updateQuery(); render(); });
+    el.fApi.addEventListener('change', () => { state.api = el.fApi.checked; saveState(); updateQuery(); render(); });
+    el.fOss.addEventListener('change', () => { state.oss = el.fOss.checked; saveState(); updateQuery(); render(); });
+    el.fSelf.addEventListener('change', () => { state.self = el.fSelf.checked; saveState(); updateQuery(); render(); });
+
+    // NSFW gate with one-time confirm
+    el.fNSFW.addEventListener('change', (e) => {
+      if (el.fNSFW.checked) {
+        if (!localStorage.getItem(NSFW_ACK_KEY)) {
+          // show modal, revert checkbox until confirmed
+          el.fNSFW.checked = false;
+          el.nsfwConfirm.showModal();
+          return;
+        }
+        state.nsfw = true;
+      } else {
+        state.nsfw = false;
+      }
+      saveState(); updateQuery(); render();
+    });
+    el.nsfwClose.addEventListener('click', () => el.nsfwConfirm.close());
+    el.nsfwCancel.addEventListener('click', () => el.nsfwConfirm.close());
+    el.nsfwProceed.addEventListener('click', () => {
+      localStorage.setItem(NSFW_ACK_KEY, '1');
+      el.nsfwConfirm.close();
+      el.fNSFW.checked = true;
+      state.nsfw = true;
+      saveState(); updateQuery(); render();
+    });
+
+    // Render
+    function render() {
+      const results = filterAndSort();
+      el.count.textContent = `${results.length.toLocaleString()} tools`;
+      el.grid.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      for (const t of results) frag.appendChild(card(t));
+      el.grid.appendChild(frag);
+      el.nsfwBanner.classList.toggle('hidden', state.nsfw);
+    }
+
+    // Better search: simple query syntax + weighted scoring + small typo tolerance on name/tags
+    function filterAndSort() {
+      const parsed = parseQuery(state.q);
+      const tokens = parsed.tokens; // normalized tokens
+      const kv = parsed.filters;
+
+      const out = [];
+      const yearNow = new Date().getFullYear();
+
+      for (let idx = 0; idx < TOOLS.length; idx++) {
+        const t = TOOLS[idx];
+        const fields = INDEXED[idx].fields;
+
+        // NSFW gate
+        if (!state.nsfw && t.nsfw_allowed === 'yes') continue;
+
+        // UI filters
+        if (state.category && !(t.categories || []).includes(state.category)) continue;
+        if (state.pricing && t.pricing !== state.pricing) continue;
+        if (state.api && !t.api) continue;
+        if (state.oss && !t.open_source) continue;
+        if (state.self && !t.self_hosted) continue;
+
+        // Query key:values (extra filters)
+        if (kv.category && !fields.cats.includes(kv.category)) continue;
+        if (kv.vendor && fields.vendor.indexOf(kv.vendor) === -1) continue;
+        if (kv.pricing && (t.pricing || '') !== kv.pricing) continue;
+        if (kv.status && (t.status || '') !== kv.status) continue;
+        if (kv.api !== undefined && !!t.api !== kv.api) continue;
+        if (kv.oss !== undefined && !!t.open_source !== kv.oss) continue;
+        if (kv.self !== undefined && !!t.self_hosted !== kv.self) continue;
+        if (kv.nsfw && (t.nsfw_allowed || '') !== kv.nsfw) continue;
+        if (kv.tag && !fields.tags.includes(kv.tag)) continue;
+
+        // Scoring
+        let score = 1;
+        if (tokens.length) {
+          let matchedAny = false;
+          for (const tok of tokens) {
+            let s = 0;
+            const tokLower = tok;
+
+            // Strong weights on name/vendor/tags/categories
+            if (includes(fields.name, tokLower)) s += 60;
+            if (startsWith(fields.name, tokLower)) s += 20;
+            if (equals(fields.name, tokLower)) s += 30;
+
+            if (includes(fields.vendor, tokLower)) s += 18;
+
+            if (fields.tags.some(tag => includes(tag, tokLower))) s += 40;
+            if (fields.tags.some(tag => startsWith(tag, tokLower))) s += 20;
+
+            if (fields.cats.some(cat => includes(cat, tokLower))) s += 28;
+
+            if (includes(fields.desc, tokLower)) s += 10;
+
+            // Small typo tolerance on name/tags (edit distance <= 1)
+            if (s === 0) {
+              if (tokLower.length >= 4) {
+                if (isClose1(tokLower, fields.name)) s += 18;
+                else if (fields.tags.some(tag => isClose1(tokLower, tag))) s += 12;
+              }
+            }
+
+            if (s > 0) matchedAny = true;
+            score += s;
+          }
+          if (!matchedAny) continue; // no token matched
+        }
+
+        // Recency bonus (light)
+        if ((t.release_year || 0) >= yearNow - 1) score += 5;
+
+        out.push({ t, score });
+      }
+
+      switch (state.sort) {
+        case 'name-asc': out.sort((a,b) => a.t.name.localeCompare(b.t.name)); break;
+        case 'newest': out.sort((a,b) => (b.t.release_year||0) - (a.t.release_year||0)); break;
+        case 'oldest': out.sort((a,b) => (a.t.release_year||0) - (b.t.release_year||0)); break;
+        default: out.sort((a,b) => b.score - a.score || a.t.name.localeCompare(b.t.name));
+      }
+      return out.map(x => x.t);
+    }
+
+    function card(tool) {
+      const d = document.createElement('article');
+      d.className = 'card';
+      d.role = 'button';
+      d.tabIndex = 0;
+      d.addEventListener('click', () => openTool(tool.url));
+      d.addEventListener('keydown', (e) => { if (e.key === 'Enter') openTool(tool.url); });
+
+      const top = document.createElement('div'); top.className = 'card-top';
+      const left = document.createElement('div');
+      const title = document.createElement('div'); title.className = 'title'; title.textContent = tool.name;
+      const vendor = document.createElement('div'); vendor.className = 'vendor'; vendor.textContent = tool.vendor || '';
+      left.append(title, vendor);
+
+      const right = document.createElement('div'); right.className = 'links';
+      const openBtn = document.createElement('button'); openBtn.className = 'ghost'; openBtn.textContent = 'Open ↗'; openBtn.title = 'Open tool in new tab'; openBtn.addEventListener('click', (e)=> { e.stopPropagation(); openTool(tool.url); });
+      const aboutBtn = document.createElement('button'); aboutBtn.className = 'ghost'; aboutBtn.textContent = 'About this tool'; aboutBtn.addEventListener('click', (e)=> { e.stopPropagation(); showAbout(tool); });
+      right.append(openBtn, aboutBtn);
+      top.append(left, right);
+
+      const desc = document.createElement('div'); desc.className = 'desc'; desc.textContent = tool.description || '';
+
+      const catRow = document.createElement('div'); catRow.className = 'badges';
+      (tool.categories || []).slice(0,3).forEach(c => { const span = document.createElement('span'); span.className = 'pill'; span.style.borderColor = stringToColor(c, .45); span.style.background = stringToColor(c, .12); span.textContent = c; catRow.appendChild(span); });
+
+      const tagRow = document.createElement('div'); tagRow.className = 'badges';
+      (tool.tags || []).slice(0,6).forEach(tag => { const span = document.createElement('span'); span.className = 'badge'; span.textContent = tag; tagRow.appendChild(span); });
+
+      const meta = document.createElement('div'); meta.className = 'badges';
+      if (tool.status && tool.status !== 'active') { const s = document.createElement('span'); s.className = 'badge status'; s.dataset.s = tool.status; s.textContent = tool.status; meta.appendChild(s); }
+      const price = document.createElement('span'); price.className = 'badge'; price.textContent = (tool.pricing || 'unknown'); meta.appendChild(price);
+
+      if (tool.api) meta.appendChild(badge('API'));
+      if (tool.open_source) meta.appendChild(badge('Open source'));
+      if (tool.self_hosted) meta.appendChild(badge('Self-hosted'));
+      if (tool.nsfw_allowed === 'yes') meta.appendChild(badge('NSFW', 'nsfw'));
+
+      d.append(top, desc, catRow, tagRow, meta);
+      return d;
+
+      function badge(txt, cls='') { const s = document.createElement('span'); s.className = 'badge ' + cls; s.textContent = txt; return s; }
+    }
+
+    function showAbout(t) {
+      el.aboutTitle.textContent = t.name;
+      el.aboutVendor.textContent = t.vendor || '';
+      el.aboutDesc.textContent = t.description || '';
+      el.aboutOpen.href = t.url;
+      el.aboutCats.innerHTML = '';
+      (t.categories || []).forEach(c => {
+        const s = document.createElement('span'); s.className = 'pill';
+        s.style.borderColor = stringToColor(c, .45); s.style.background = stringToColor(c, .12);
+        s.textContent = c; el.aboutCats.appendChild(s);
+      });
+      el.aboutTags.innerHTML = '';
+      (t.tags || []).forEach(tag => { const s = document.createElement('span'); s.className = 'badge'; s.textContent = tag; el.aboutTags.appendChild(s); });
+      el.aboutPricing.textContent = t.pricing || '—';
+      el.aboutApi.textContent = t.api ? 'Yes' : 'No';
+      el.aboutOSS.textContent = t.open_source ? 'Yes' : 'No';
+      el.aboutSelf.textContent = t.self_hosted ? 'Yes' : 'No';
+      el.aboutNSFW.textContent = t.nsfw_allowed || 'unknown';
+      el.aboutStatus.textContent = t.status || 'active';
+      el.aboutYear.textContent = (t.release_year || '—');
+      el.aboutId.textContent = t.id || '—';
+
+      if (typeof el.about.showModal === 'function') el.about.showModal();
+      else el.about.setAttribute('open', '');
+    }
+    el.aboutClose.addEventListener('click', () => el.about.close());
+    el.about.addEventListener('click', (e) => { if (e.target === el.about) el.about.close(); });
+
+    function openTool(url) { window.open(url, '_blank', 'noopener,noreferrer'); }
+
+    // Query parsing and helpers
+    function parseQuery(q) {
+      if (!q) return { tokens: [], filters: {} };
+      const lower = q.toLowerCase();
+      const kv = {};
+      const tokens = [];
+
+      // Extract key:value pairs (supports quoted values)
+      const re = /(\b[a-z_]+)\s*:\s*("[^"]+"|[^"\s]+)/g;
+      let m;
+      const usedSpans = [];
+      while ((m = re.exec(lower)) !== null) {
+        let key = m[1]; let val = m[2].replace(/^"|"$/g, '');
+        switch (key) {
+          case 'tag': case 'tags': case 't': kv.tag = val; break;
+          case 'category': case 'cat': case 'c': kv.category = val; break;
+          case 'pricing': case 'price': case 'p': kv.pricing = val; break;
+          case 'vendor': case 'v': kv.vendor = val; break;
+          case 'status': case 's': kv.status = val; break;
+          case 'api': kv.api = parseBool(val); break;
+          case 'oss': kv.oss = parseBool(val); break;
+          case 'self': case 'self_hosted': kv.self = parseBool(val); break;
+          case 'nsfw': kv.nsfw = val; break; // yes/no/limited
+          case 'id': kv.id = val; break;
+          case 'year': case 'release_year': kv.year = parseInt(val, 10) || null; break;
+          default: break;
+        }
+        usedSpans.push([m.index, m.index + m[0].length]);
+      }
+
+      // Remove consumed spans and split remaining into free tokens
+      const remaining = removeSpans(lower, usedSpans);
+      tokenize(remaining).forEach(tok => tokens.push(tok));
+
+      // Expand synonyms lightly
+      const expanded = expandTokens(tokens);
+
+      return { tokens: expanded, filters: kv };
+
+      function parseBool(v) { return ['1','true','yes','y'].includes(String(v).toLowerCase()); }
+    }
+
+    function removeSpans(str, spans) {
+      if (!spans.length) return str;
+      let out = ''; let cursor = 0;
+      for (const [s,e] of spans) { out += str.slice(cursor, s); cursor = e; }
+      out += str.slice(cursor); return out;
+    }
+
+    function tokenize(text) {
+      if (!text) return [];
+      return text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .split(/[^a-z0-9\.\-\+]+/).filter(Boolean);
+    }
+
+    function expandTokens(tokens) {
+      const syn = {
+        'tts': ['text_to_speech','text-to-speech','voice','speech','speech-synthesis'],
+        'stt': ['speech_to_text','asr','transcription'],
+        'rag': ['retrieval','vector','embeddings','knowledge'],
+        'nsfw': ['adult','18+'],
+        'mod': ['moderation','guardrails','safety'],
+        'ide': ['editor','vscode','jetbrains'],
+        'cv': ['computer','vision'],
+        'img': ['image','images','picture','photo'],
+        'vid': ['video','videos'],
+      };
+      const out = new Set(tokens);
+      for (const t of tokens) {
+        if (syn[t]) syn[t].forEach(s => out.add(s));
+      }
+      return Array.from(out);
+    }
+
+    function includes(str, tok) { return str && str.indexOf(tok) !== -1; }
+    function startsWith(str, tok) { return str && str.startsWith(tok); }
+    function equals(str, tok) { return str === tok; }
+
+    // Typo tolerance (edit distance <= 1) optimized for quick check
+    function isClose1(a, bField) {
+      if (!bField) return false;
+      // Compare token to name and each tag word
+      const candidates = [bField, ...bField.split(/[^a-z0-9]+/)];
+      for (const b of candidates) {
+        if (!b) continue;
+        if (editLe1(a, b)) return true;
+      }
+      return false;
+    }
+    function editLe1(a, b) {
+      if (a === b) return true;
+      const la = a.length, lb = b.length;
+      if (Math.abs(la - lb) > 1) return false;
+      let i=0, j=0, edits=0;
+      while (i < la && j < lb) {
+        if (a[i] === b[j]) { i++; j++; continue; }
+        if (edits === 1) return false;
+        edits++;
+        if (la > lb) i++; else if (lb > la) j++; else { i++; j++; }
+      }
+      if (i < la || j < lb) edits++;
+      return edits <= 1;
+    }
+
+    function stringToColor(str, alpha=0.2) {
+      let h = 0; for (let i=0; i<str.length; i++) h = (h*31 + str.charCodeAt(i)) >>> 0;
+      const hue = h % 360; return `hsla(${hue} 70% 55% / ${alpha})`;
+    }
+    function debounce(fn, ms) { let t; return (...args) => { clearTimeout(t); t = setTimeout(()=>fn(...args), ms); }; }
+
+    // Deep link + persist UI state
+    function updateQuery() {
+      const p = new URLSearchParams();
+      if (state.q) p.set('q', state.q);
+      if (state.category) p.set('c', state.category);
+      if (state.pricing) p.set('p', state.pricing);
+      if (state.api) p.set('api', '1');
+      if (state.oss) p.set('oss', '1');
+      if (state.self) p.set('self', '1');
+      if (state.nsfw) p.set('nsfw', '1');
+      if (state.sort !== 'relevance') p.set('s', state.sort);
+      const url = p.toString() ? `?${p.toString()}` : location.pathname;
+      history.replaceState(null, '', url);
+    }
+    function restoreFromQueryOrState() {
+      const p = new URLSearchParams(location.search);
+      const saved = (() => { try { return JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch { return null; } })();
+
+      state.q = p.get('q') ?? (saved?.q || '');
+      state.category = p.get('c') ?? (saved?.category || '');
+      state.pricing = p.get('p') ?? (saved?.pricing || '');
+      state.api = p.has('api') ? true : (saved?.api || false);
+      state.oss = p.has('oss') ? true : (saved?.oss || false);
+      state.self = p.has('self') ? true : (saved?.self || false);
+      state.nsfw = p.has('nsfw') ? true : (saved?.nsfw || false);
+      state.sort = p.get('s') ?? (saved?.sort || 'relevance');
+
+      el.q.value = state.q;
+      el.pricing.value = state.pricing;
+      el.sort.value = state.sort;
+      el.fApi.checked = state.api;
+      el.fOss.checked = state.oss;
+      el.fSelf.checked = state.self;
+      el.fNSFW.checked = state.nsfw;
+
+      // activate category chip
+      for (const b of el.categoryRow.children) {
+        b.dataset.active = (b.dataset.value || '') === state.category ? 'true' : 'false';
+        if (state.category === '' && (b.textContent||'').startsWith('All')) b.dataset.active = 'true';
+      }
+    }
+    function saveState() {
+      localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    }
+  </script>
+</body>
+</html>
